@@ -4,7 +4,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 // Fix: Renamed AppContext to AppContextForAI to match the exported type from types.ts.
 import { DocumentDocType, Document, Task, CalendarEvent, TaskStatus, VisitReportData, AppContextForAI } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
 export const analyzeDocumentForData = async (
   content: { text?: string; file?: { base64: string; mimeType: string; } }
