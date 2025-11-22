@@ -998,14 +998,9 @@ const DocumentManager: React.FC = () => {
 
             // Debug logging removed for production
 
-            // Save the file using the appropriate method (Tauri or Web)
-            if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-                const { saveFileToDiskTauri } = await import('../utils/fileUploadTauri');
-                return await saveFileToDiskTauri(normalizedFolderPath, fileName, base64Data);
-            } else {
-                const { saveFileToDiskWeb } = await import('../utils/fileUploadWeb');
-                return await saveFileToDiskWeb(normalizedFolderPath, fileName, base64Data);
-            }
+            // Save the file using the web method
+            const { saveFileToDiskWeb } = await import('../utils/fileUploadWeb');
+            return await saveFileToDiskWeb(normalizedFolderPath, fileName, base64Data);
         } catch (error) {
             console.error('Error saving document file to folder:', error);
             return false;

@@ -21,7 +21,6 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         rollupOptions: {
-          // external: [/^@tauri-apps\//],
           output: {
             assetFileNames: '[name][extname]',
             chunkFileNames: '[name].js',
@@ -31,8 +30,6 @@ export default defineConfig(({ mode }) => {
         assetsDir: '',
         base: './'
       },
-      optimizeDeps: {
-        // exclude: ['@tauri-apps/api']
-      }
+
     };
 });
