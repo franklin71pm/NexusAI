@@ -18,6 +18,21 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        rollupOptions: {
+          // external: [/^@tauri-apps\//],
+          output: {
+            assetFileNames: '[name][extname]',
+            chunkFileNames: '[name].js',
+            entryFileNames: '[name].js'
+          }
+        },
+        assetsDir: '',
+        base: './'
+      },
+      optimizeDeps: {
+        // exclude: ['@tauri-apps/api']
       }
     };
 });

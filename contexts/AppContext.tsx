@@ -12,10 +12,8 @@ const createNewYearData = (): YearData => ({
     documents: [],
     tasks: [],
     events: [],
-    files: [
-        { id: `folder-1-${Date.now()}`, name: 'Informes', type: 'folder', size: 0, modifiedDate: new Date().toISOString(), parentId: null },
-        { id: `folder-2-${Date.now()}`, name: 'Recursos', type: 'folder', size: 0, modifiedDate: new Date().toISOString(), parentId: null },
-    ],
+    // No default folders to avoid auto-creating folders on first-run
+    files: [],
     trashItems: [],
     schedule: {},
     laborReport: [],
@@ -46,7 +44,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         schoolName: 'Escuela Capacitación Ambiental Veracruz',
         directorName: 'MSc. Franklin Porras Mejía'
     });
-    const [savePath, setSavePath] = useState(() => localStorage.getItem('savePath') || '/NexusOS_Data');
     const [templates, setTemplates] = useState<Template[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -100,14 +97,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 await initDB();
                 let data = await getAllYearlyData();
                 if (!data || Object.keys(data).length === 0) {
-                    console.log('No data in DB, initializing with mock data.');
+                    // Debug logging removed for production
                     const year = new Date().getFullYear();
                     data = { [year]: getInitialYearState() };
                     await saveAllYearlyData(data);
+                } else {
+                    // Sanitize previously-saved demo folders that were created by earlier mock data
+                    // Only remove known mock IDs to avoid deleting user data.
+                    const demoFolderIds = new Set(['folder-1', 'folder-2', 'folder-3']);
+                    let mutated = false;
+                    Object.keys(data).forEach(yearKey => {
+                        const yd = (data as any)[yearKey];
+                        if (yd && Array.isArray(yd.files) && yd.files.length > 0) {
+                            const originalLen = yd.files.length;
+                            yd.files = yd.files.filter((f: any) => !demoFolderIds.has(f.id));
+                            if (yd.files.length !== originalLen) mutated = true;
+                        }
+                    });
+                    if (mutated) {
+                        // Persist sanitized data back to IndexedDB
+                        await saveAllYearlyData(data);
+                    }
                 }
+                // Debug logging removed for production
                 setAllData(data);
             } catch (error) {
-                console.error("Failed to load data from IndexedDB", error);
+                // Debug logging removed for production
                 addToast("Error al cargar los datos de la base de datos.", "error");
                 const year = new Date().getFullYear();
                 setAllData({ [year]: getInitialYearState() });
@@ -122,7 +137,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     useEffect(() => {
         if (!isLoadingData && Object.keys(allData).length > 0) {
             saveAllYearlyData(allData).catch(error => {
-                console.error("Failed to save data to IndexedDB", error);
+                // Debug logging removed for production
                 addToast("Error al guardar los datos.", "error");
             });
         }
@@ -152,9 +167,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('accentColor', accentColor);
     }, [accentColor]);
 
-    useEffect(() => {
-        localStorage.setItem('savePath', savePath);
-    }, [savePath]);
     
     useEffect(() => {
         document.documentElement.style.fontSize = fontSize;
@@ -253,12 +265,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setAllData(data.allData);
             setSchoolInfo(data.schoolInfo);
             setTemplates(data.templates);
-            setSavePath(data.savePath);
             setAccentColor(data.accentColor);
             setFontSizeState(data.fontSize);
             setFontFamilyState(data.fontFamily);
         } catch (error) {
-            console.error("Failed to import data into IndexedDB", error);
+            // Debug logging removed for production
             addToast("Error crítico al importar datos a la base de datos.", "error");
             throw error;
         }
@@ -416,10 +427,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }), [documents, tasks, events, files]);
 
     const value: AppContextType = {
-        theme, accentColor, currentView, isCommandPaletteOpen, isSidebarCollapsed, schoolInfo, templates, isSearchModalOpen, savePath, toasts, View, fontSize, fontFamily, isLoadingData,
+        theme, accentColor, currentView, isCommandPaletteOpen, isSidebarCollapsed, schoolInfo, templates, isSearchModalOpen, toasts, View, fontSize, fontFamily, isLoadingData,
         allData, importData, currentYear, availableYears, documents, tasks, events, files, trashItems, schedule, laborReport, visitReport, logEntries, notifications, appContextForAI,
         taskForDocFlow, viewingDocInfo, viewingTask, viewingEvent, previewingFile,
-        toggleTheme, setAccentColor, setCurrentView, addToast, toggleCommandPalette, toggleSidebar, setSchoolInfo, handleSaveTemplate, handleDeleteTemplate, toggleSearchModal, setSavePath, setFontSize, setFontFamily,
+        toggleTheme, setAccentColor, setCurrentView, addToast, toggleCommandPalette, toggleSidebar, setSchoolInfo, handleSaveTemplate, handleDeleteTemplate, toggleSearchModal, setFontSize, setFontFamily,
         setCurrentYear, startNewYear, setDocuments, setTasks, setEvents, setFiles, setTrashItems, setSchedule, setLaborReport, setVisitReport, setLogEntries,
         setTaskForDocFlow, setViewingDocInfo, setViewingTask, setViewingEvent, setPreviewingFile,
         setNotifications, handleMarkAsRead, handleMarkAllAsRead, handleClearReadNotifications,

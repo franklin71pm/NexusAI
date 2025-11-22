@@ -97,14 +97,14 @@ const FolderCreationModal: React.FC<{
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-nexus-dark border border-slate-300 dark:border-nexus-border rounded-md p-2 focus:ring-2 focus:ring-nexus-accent focus:outline-none"
                         required
                         autoFocus
+                        className="w-full border border-slate-300 dark:border-nexus-border rounded-md px-2 py-1 mb-4"
                     />
                 </div>
-                <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-slate-200 dark:border-nexus-border">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded bg-slate-200 text-slate-800 dark:bg-nexus-surface dark:text-white hover:bg-slate-300 dark:hover:bg-nexus-border">Cancelar</button>
-                    <button type="submit" className="px-4 py-2 rounded bg-nexus-primary text-white hover:bg-nexus-secondary">Crear</button>
+                <div className="flex justify-end gap-2 mt-4">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-md bg-slate-200 dark:bg-nexus-surface text-slate-700 dark:text-nexus-text-secondary hover:bg-slate-300 dark:hover:bg-nexus-border">Cancelar</button>
+                    <button type="submit" className="px-4 py-2 rounded-md bg-cyan-500 text-white hover:bg-cyan-600">Crear</button>
                 </div>
             </form>
         </div>
@@ -220,7 +220,7 @@ const FileIcon: React.FC<{ type: string }> = ({ type }) => {
 }
 
 const FileManager: React.FC = () => {
-    const { files, setFiles, deleteFile, deleteFolder, setPreviewingFile, savePath, addToast } = useApp();
+    const { files, setFiles, deleteFile, deleteFolder, setPreviewingFile, addToast } = useApp();
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['folder-1']));
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, folderId: string } | null>(null);
@@ -232,7 +232,8 @@ const FileManager: React.FC = () => {
     const currentFiles = useMemo(() => files.filter(f => f.parentId === selectedFolderId && f.type !== 'folder'), [files, selectedFolderId]);
     
     const currentPath = useMemo(() => {
-        if (!selectedFolderId) return savePath;
+        // Ruta virtual basada en la estructura de carpetas
+        if (!selectedFolderId) return 'Sistema de Archivos';
         let pathParts: string[] = [];
         let currentId: string | null = selectedFolderId;
         while (currentId) {
@@ -244,8 +245,8 @@ const FileManager: React.FC = () => {
                 currentId = null;
             }
         }
-        return `${savePath}/${pathParts.join('/')}`;
-    }, [selectedFolderId, folders, savePath]);
+        return `Sistema de Archivos/${pathParts.join('/')}`;
+    }, [selectedFolderId, folders]);
 
     const handleToggleFolder = (id: string) => {
         setExpandedFolders(prev => {
@@ -259,7 +260,7 @@ const FileManager: React.FC = () => {
         });
     };
     
-    const handleCreateFolder = useCallback((name: string) => {
+    const handleCreateFolder = useCallback(async (name: string) => {
         const newFolder: FileItem = {
             id: `folder-${Date.now()}`,
             name,
@@ -268,25 +269,36 @@ const FileManager: React.FC = () => {
             modifiedDate: new Date().toISOString(),
             parentId: newFolderParentId,
         };
+
+        // Optimistically update UI
         setFiles(prev => [...prev, newFolder]);
         setIsCreateFolderModalOpen(false);
         setNewFolderParentId(null);
         if (newFolderParentId) {
             setExpandedFolders(prev => new Set(prev).add(newFolderParentId));
         }
-    }, [newFolderParentId, setFiles]);
+
+        try {
+            addToast(`Carpeta '${name}' creada en la interfaz (modo web)`, 'success');
+            console.log('[FileManager] En modo web, carpeta creada virtualmente:', name);
+        } catch (error) {
+            console.error("Error al crear carpeta:", error);
+            addToast(`Error al crear la carpeta: ${error}`, 'error');
+            setFiles(prev => prev.filter(f => f.id !== newFolder.id));
+        }
+    }, [newFolderParentId, setFiles, addToast]);
 
     const handleRenameFile = (id: string, newName: string) => {
         setFiles(prev => prev.map(f => f.id === id ? { ...f, name: newName, modifiedDate: new Date().toISOString() } : f));
     };
 
-    const handleAddFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAddFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const uploadedFiles = e.target.files;
         if (uploadedFiles) {
-            // Fix: Explicitly type the 'file' parameter to resolve issues with it being inferred as 'unknown'.
-            Array.from(uploadedFiles).forEach((file: File) => {
+            for (const file of Array.from(uploadedFiles) as File[]) {
                 const reader = new FileReader();
-                reader.onload = (event) => {
+                reader.onload = async (event) => {
+                    const base64Content = (event.target?.result as string) || '';
                     const newFile: FileItem = {
                         id: `file-${Date.now()}-${Math.random()}`,
                         name: file.name,
@@ -294,12 +306,26 @@ const FileManager: React.FC = () => {
                         size: file.size,
                         modifiedDate: new Date().toISOString(),
                         parentId: selectedFolderId,
-                        contentUrl: event.target?.result as string,
+                        contentUrl: base64Content,
                     };
                     setFiles(prev => [...prev, newFile]);
+                    const folderPath = currentPath;
+                    let normalizedFolderPath = folderPath;
+                    if (/^[A-Za-z]:\\/.test(folderPath) || /^[A-Za-z]:/.test(folderPath)) {
+                        normalizedFolderPath = folderPath.replace(/\//g, '\\\\');
+                    }
+
+                    const base64Data = base64Content.split(',')[1];
+                    // Solo lógica web
+                    const { saveFileToDiskWeb } = await import('../utils/fileUploadWeb');
+                    const saveResult = await saveFileToDiskWeb(normalizedFolderPath, file.name, base64Data);
+                    if (!saveResult) {
+                        addToast(`Error al guardar archivo real: ${file.name}`, 'error');
+                        setFiles(prev => prev.filter(f => f.id !== newFile.id));
+                    }
                 };
                 reader.readAsDataURL(file);
-            });
+            }
             addToast(`${uploadedFiles.length} archivo(s) subido(s).`, 'success');
         }
     };
@@ -370,7 +396,7 @@ const FileManager: React.FC = () => {
     };
 
     return (
-        <div className="animate-fade-in">
+        <div>
             <FolderCreationModal 
                 isOpen={isCreateFolderModalOpen} 
                 onClose={() => setIsCreateFolderModalOpen(false)}

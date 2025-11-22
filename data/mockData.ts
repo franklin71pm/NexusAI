@@ -15,14 +15,8 @@ export const initialEvents: CalendarEvent[] = [
     { id: 'evt-2', title: 'Visita a docente: Susana García', date: '2024-10-08', startTime: '10:00 AM', endTime: '11:00 AM', description: 'Observación de clase.' },
 ];
 
-export const initialFiles: FileItem[] = [
-    { id: 'folder-1', name: 'Informes 2024', type: 'folder', size: 0, modifiedDate: '2024-07-01T10:00:00Z', parentId: null },
-    { id: 'folder-2', name: 'Recursos Humanos', type: 'folder', size: 0, modifiedDate: '2024-06-15T10:00:00Z', parentId: null },
-    { id: 'file-1', name: 'Informe_Ventas_Q2.pdf', type: 'pdf', size: 262144, modifiedDate: '2024-07-20T11:00:00Z', parentId: 'folder-1' },
-    { id: 'file-2', name: 'Planilla_Julio.xlsx', type: 'xlsx', size: 131072, modifiedDate: '2024-07-18T15:30:00Z', parentId: 'folder-2' },
-    { id: 'folder-3', name: 'Informes Anteriores', type: 'folder', size: 0, modifiedDate: '2024-01-10T09:00:00Z', parentId: 'folder-1' },
-    { id: 'file-3', name: 'Informe_Ventas_Q1.pdf', type: 'pdf', size: 245760, modifiedDate: '2024-04-05T14:00:00Z', parentId: 'folder-3' },
-];
+// Start with no initial files/folders to avoid automatic folder creation on first run.
+export const initialFiles: FileItem[] = [];
 
 export const initialScheduleData: { [key: string]: string } = {
   '2024-10-01': 'Revisión de correos electrónicos y gestión de trámites. Atención a imprevistos y consultas. Trabajo administrativo de oficina. Reunión con personal docente y administrativo.',

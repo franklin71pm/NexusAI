@@ -6,10 +6,9 @@ import { useApp } from '../contexts/AppContext';
 import { BackupData } from '../types';
 
 const Settings: React.FC = () => {
-    const { 
-        accentColor, setAccentColor, 
-        schoolInfo, setSchoolInfo, 
-        savePath, setSavePath,
+    const {
+        accentColor, setAccentColor,
+        schoolInfo, setSchoolInfo,
         fontSize, setFontSize,
         fontFamily, setFontFamily,
         addToast,
@@ -32,7 +31,7 @@ const Settings: React.FC = () => {
     const handleNotificationChange = (key: keyof typeof notifications) => {
         setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
     };
-    
+
     const handleExport = () => {
         try {
             const backupData: BackupData = {
@@ -41,7 +40,6 @@ const Settings: React.FC = () => {
                 allData,
                 schoolInfo,
                 templates,
-                savePath,
                 accentColor,
                 fontSize,
                 fontFamily,
@@ -58,7 +56,7 @@ const Settings: React.FC = () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
+
             addToast("Datos exportados exitosamente.", "success");
             confirmBackup();
         } catch (error) {
@@ -81,15 +79,15 @@ const Settings: React.FC = () => {
             try {
                 const result = event.target?.result;
                 if (typeof result !== 'string') throw new Error("File content is not readable.");
-                
+
                 const data = JSON.parse(result) as BackupData;
-                
+
                 if (data.version !== 1 || !data.allData || !data.schoolInfo) {
                     throw new Error("El archivo de respaldo es inválido o está corrupto.");
                 }
 
                 importData(data);
-                
+
                 addToast("Datos importados con éxito. La aplicación se recargará.", "success");
 
                 setTimeout(() => {
@@ -123,7 +121,7 @@ const Settings: React.FC = () => {
 
     return (
         <div className="animate-fade-in space-y-6">
-             <style>{`.form-input { width: 100%; background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 0.375rem; padding: 0.5rem; } .dark .form-input { background-color: #0D1117; border-color: #30363D; } .form-input:focus { outline: none; box-shadow: 0 0 0 2px var(--color-accent); }`}</style>
+            <style>{`.form-input { width: 100%; background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 0.375rem; padding: 0.5rem; } .dark .form-input { background-color: #0D1117; border-color: #30363D; } .form-input:focus { outline: none; box-shadow: 0 0 0 2px var(--color-accent); }`}</style>
             <Card>
                 <h2 className="text-lg font-semibold text-nexus-primary mb-4">Información de la Institución</h2>
                 <div className="space-y-4">
@@ -180,26 +178,7 @@ const Settings: React.FC = () => {
                     </div>
                 </div>
             </Card>
-             <Card>
-                <h2 className="text-lg font-semibold text-nexus-primary mb-4">Configuración de Archivos</h2>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-nexus-text-secondary mb-1">Ruta de Guardado de Archivos</label>
-                        <input 
-                            type="text" 
-                            name="savePath" 
-                            value={savePath} 
-                            onChange={(e) => setSavePath(e.target.value)} 
-                            className="form-input" 
-                            placeholder="/ruta/para/guardar/archivos" 
-                        />
-                        <p className="text-xs text-slate-500 dark:text-nexus-text-secondary mt-1">
-                            Esta es la ruta base donde la aplicación simulará el guardado de carpetas y archivos.
-                        </p>
-                    </div>
-                </div>
-            </Card>
-             <Card>
+            <Card>
                 <h2 className="text-lg font-semibold text-nexus-primary mb-4">Notificaciones</h2>
                 <div className="space-y-2">
                     <ToggleSwitch enabled={notifications.tasks} onChange={() => handleNotificationChange('tasks')} label="Vencimiento de Tareas" />
@@ -207,7 +186,7 @@ const Settings: React.FC = () => {
                     <ToggleSwitch enabled={notifications.calendar} onChange={() => handleNotificationChange('calendar')} label="Eventos Próximos" />
                 </div>
             </Card>
-             <Card>
+            <Card>
                 <h2 className="text-lg font-semibold text-nexus-primary mb-4">Idioma y Región</h2>
                 <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-nexus-text-secondary mb-1">Idioma</label>

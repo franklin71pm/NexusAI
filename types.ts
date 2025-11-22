@@ -77,6 +77,7 @@ export interface Document {
     receivedBy?: string; // Recibido por (para salientes)
     receptionDate?: string; // Fecha recepción (para salientes)
     generatedFromTaskId?: string; // ID of the task that generated this document
+    folderId?: string; // ID de la carpeta donde se guardará el archivo
 }
 
 export interface Task {
@@ -183,7 +184,6 @@ export interface BackupData {
     allData: { [year: number]: YearData };
     schoolInfo: SchoolInfo;
     templates: Template[];
-    savePath: string;
     accentColor: string;
     fontSize: string;
     fontFamily: string;
@@ -211,7 +211,6 @@ export interface AppContextType {
     schoolInfo: SchoolInfo;
     templates: Template[];
     isSearchModalOpen: boolean;
-    savePath: string;
     toasts: Toast[];
     View: typeof View;
     fontSize: string;
@@ -250,7 +249,6 @@ export interface AppContextType {
     handleSaveTemplate: (template: Template) => void;
     handleDeleteTemplate: (id: string) => void;
     toggleSearchModal: () => void;
-    setSavePath: (path: string) => void;
     setFontSize: (size: string) => void;
     setFontFamily: (font: string) => void;
 

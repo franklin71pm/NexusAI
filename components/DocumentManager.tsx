@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 // Fix: Import types from the centralized types.ts file
-import { Document, DocumentStatus, DocumentDocType, Task, TaskStatus, TaskPriority, CalendarEvent, Notification, NotificationType } from '../types';
+import { Document, DocumentStatus, DocumentDocType, Task, TaskStatus, TaskPriority, CalendarEvent, Notification, NotificationType, FileItem } from '../types';
 import Card from './common/Card';
 import { analyzeDocumentForData } from '../services/geminiService';
 import { useApp } from '../contexts/AppContext';
@@ -142,7 +142,8 @@ const DocumentRegistrationModal: React.FC<{
     taskContext: Task | null;
     onSelectSaliente: () => void;
     openDirectlyTo?: 'Saliente' | null;
-}> = ({ isOpen, onClose, onSave, documentToEdit, taskContext, onSelectSaliente, openDirectlyTo }) => {
+    files: FileItem[];
+}> = ({ isOpen, onClose, onSave, documentToEdit, taskContext, onSelectSaliente, openDirectlyTo, files }) => {
     const [step, setStep] = useState<'selection' | 'form'>('selection');
     const [formType, setFormType] = useState<'Entrante' | 'Saliente' | null>(null);
     const [formData, setFormData] = useState<Partial<Document>>({});
@@ -157,6 +158,17 @@ const DocumentRegistrationModal: React.FC<{
     const [createTask, setCreateTask] = useState(false);
     const [createEvent, setCreateEvent] = useState(false);
     const [eventTimes, setEventTimes] = useState({ startTime: '09:00', endTime: '10:00' });
+    const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+    const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState(false);
+    const [isFolderSelectorOpenSaliente, setIsFolderSelectorOpenSaliente] = useState(false);
+
+    // Get folders from files
+    const folders = files.filter(file => file.type === 'folder');
+
+    // Get selected folder name
+    const selectedFolder = folders.find(folder => folder.id === selectedFolderId);
+
+    // Debug logging removed for production
 
 
     useEffect(() => {
@@ -189,6 +201,10 @@ const DocumentRegistrationModal: React.FC<{
                 setFormData(documentToEdit);
                 setFormType(documentToEdit.status as 'Entrante' | 'Saliente');
                 setStep('form');
+                // Set folder ID if editing existing document
+                if (documentToEdit.folderId) {
+                    setSelectedFolderId(documentToEdit.folderId);
+                }
             } else {
                 setStep('selection');
                 setFormData({});
@@ -203,6 +219,8 @@ const DocumentRegistrationModal: React.FC<{
             setCreateTask(false);
             setCreateEvent(false);
             setEventTimes({ startTime: '09:00', endTime: '10:00' });
+            setSelectedFolderId(null);
+            setIsFolderSelectorOpen(false);
             setError('');
         }
     }, [isOpen, documentToEdit, taskContext, openDirectlyTo]);
@@ -322,6 +340,7 @@ const DocumentRegistrationModal: React.FC<{
             fileMimeType: formData.fileMimeType,
             receivedBy: formData.receivedBy,
             receptionDate: formData.receptionDate,
+            folderId: selectedFolderId || undefined,
         };
 
         const saveOptions = {
@@ -340,39 +359,130 @@ const DocumentRegistrationModal: React.FC<{
     const isAnalyzing = isLoadingAI || isTextLoadingAI;
 
     const aiAnalysisSection = (
-      <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 border-l-4 border-cyan-400 rounded-r-lg space-y-3">
-        <div>
-          <label htmlFor="doc-upload-ai" className={`bg-cyan-500 text-white font-bold py-2 px-4 rounded-md hover:bg-cyan-600 transition-colors w-full text-center block ${isAnalyzing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-            {isLoadingAI ? 'Analizando Archivo...' : (selectedFileName ? 'Cambiar Archivo' : 'Subir Documento y Analizar con IA')}
-          </label>
-          <input type="file" id="doc-upload-ai" className="hidden" onChange={handleFileAnalysis} disabled={isAnalyzing} accept="image/*,application/pdf" />
+      <div className="p-4 bg-slate-50 dark:bg-nexus-surface/50 border border-slate-200 dark:border-nexus-border rounded-lg space-y-4">
+        <h3 className="text-md font-semibold text-slate-800 dark:text-nexus-text flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cyan-500" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+          </svg>
+          Análisis Automático con IA
+        </h3>
+        
+        {/* Opción 1: Carga de archivo con IA */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <label htmlFor="doc-upload-ai" className={`bg-cyan-500 text-white font-bold py-2 px-4 rounded-md hover:bg-cyan-600 transition-colors w-full text-center block ${isAnalyzing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                {isLoadingAI ? 'Analizando Archivo...' : (selectedFileName ? 'Cambiar Archivo' : 'Subir Documento y Analizar con IA')}
+              </label>
+              <input type="file" id="doc-upload-ai" className="hidden" onChange={handleFileAnalysis} disabled={isAnalyzing} accept="image/*,application/pdf" />
+            </div>
+          </div>
+          
+          {selectedFileName && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-2 bg-white dark:bg-nexus-bg rounded-md text-sm border border-slate-200 dark:border-nexus-border">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  {isLoadingAI ? (
+                    <svg className="animate-spin h-5 w-5 text-cyan-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  <span className="text-slate-700 dark:text-nexus-text-secondary truncate" title={selectedFileName}>
+                    {selectedFileName}
+                  </span>
+                </div>
+              </div>
+              {isLoadingAI && (
+                <p className="text-xs text-center text-cyan-700 dark:text-cyan-300 animate-pulse">
+                  Analizando... La IA llenará los campos del formulario.
+                </p>
+              )}
+            </div>
+          )}
         </div>
-        {selectedFileName && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-2 bg-white dark:bg-nexus-surface rounded-md text-sm border border-slate-200 dark:border-nexus-border">
+
+        {/* Separador visual */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-200 dark:bg-nexus-border"></div>
+          <span className="text-xs text-slate-500 dark:text-nexus-text-secondary">O</span>
+          <div className="flex-1 h-px bg-slate-200 dark:bg-nexus-border"></div>
+        </div>
+
+        {/* Opción 2: Carga manual sin IA */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-slate-700 dark:text-nexus-text-secondary flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Carga Manual (Sin Internet)
+          </h4>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="doc-upload-manual" className="bg-slate-600 text-white font-bold py-2 px-4 rounded-md hover:bg-slate-700 transition-colors w-full text-center block cursor-pointer">
+                Subir Archivo Manualmente
+              </label>
+              <input 
+                type="file" 
+                id="doc-upload-manual" 
+                className="hidden" 
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setSelectedFileName(file.name);
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onloadend = () => {
+                      const dataUrl = reader.result as string;
+                      setFormData(prev => ({
+                        ...prev,
+                        fileDataUrl: dataUrl,
+                        fileMimeType: file.type,
+                      }));
+                    };
+                  }
+                }} 
+                accept="image/*,application/pdf" 
+              />
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedFileName(null);
+                setFormData(prev => ({
+                  ...prev,
+                  fileDataUrl: undefined,
+                  fileMimeType: undefined,
+                }));
+              }}
+              className="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-md hover:bg-slate-300 transition-colors w-full text-center"
+            >
+              Limpiar Archivo
+            </button>
+          </div>
+          
+          {selectedFileName && !isLoadingAI && (
+            <div className="flex items-center justify-between p-2 bg-white dark:bg-nexus-bg rounded-md text-sm border border-slate-200 dark:border-nexus-border">
               <div className="flex items-center gap-3 overflow-hidden">
-                {isLoadingAI ? (
-                  <svg className="animate-spin h-5 w-5 text-cyan-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                )}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
                 <span className="text-slate-700 dark:text-nexus-text-secondary truncate" title={selectedFileName}>
                   {selectedFileName}
                 </span>
               </div>
+              <span className="text-xs text-slate-500 bg-slate-100 dark:bg-nexus-surface px-2 py-1 rounded">
+                Manual
+              </span>
             </div>
-            {isLoadingAI && (
-              <p className="text-xs text-center text-cyan-700 dark:text-cyan-300 animate-pulse">
-                Analizando... La IA llenará los campos del formulario.
-              </p>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
 
@@ -416,6 +526,93 @@ const DocumentRegistrationModal: React.FC<{
                                         <div><label className="form-label">Tipo de soporte</label><select name="supportType" value={formData.supportType} onChange={handleChange} className="form-input" required><option value="Papel">Papel</option><option value="CD">CD</option><option value="Digital">Digital</option><option value="Otro">Otro</option></select></div>
                                     </div>
                                     <div><label className="form-label">Trámite</label><input type="text" name="procedure" value={formData.procedure || ''} onChange={handleChange} className="form-input" required /></div>
+                                    
+                                    {/* Folder Selector */}
+                                    <div className="pt-4 border-t border-slate-200 dark:border-nexus-border">
+                                        <h3 className="text-md font-semibold text-slate-700 dark:text-nexus-text mb-3">Organización</h3>
+                                        <div className="space-y-3">
+                                            <div className="relative">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsFolderSelectorOpen(!isFolderSelectorOpen)}
+                                                    className="w-full flex justify-between items-center p-3 bg-white dark:bg-nexus-bg border border-slate-300 dark:border-nexus-border rounded-md text-left hover:bg-slate-50 dark:hover:bg-nexus-surface transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                                                        </svg>
+                                                        <span className={selectedFolder ? "text-slate-800 dark:text-nexus-text" : "text-slate-500 dark:text-nexus-text-secondary"}>
+                                                            {selectedFolder ? selectedFolder.name : "Seleccionar carpeta..."}
+                                                        </span>
+                                                    </div>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                                
+                                                {isFolderSelectorOpen && (
+                                                    <div className="absolute z-10 mt-1 w-full bg-white dark:bg-nexus-bg border border-slate-300 dark:border-nexus-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                        <div className="py-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setSelectedFolderId(null);
+                                                                    setIsFolderSelectorOpen(false);
+                                                                }}
+                                                                className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-nexus-text hover:bg-slate-100 dark:hover:bg-nexus-surface"
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                                    </svg>
+                                                                    <span>Sin carpeta</span>
+                                                                </div>
+                                                            </button>
+                                                            {folders.map(folder => (
+                                                                <button
+                                                                    key={folder.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setSelectedFolderId(folder.id);
+                                                                        setIsFolderSelectorOpen(false);
+                                                                    }}
+                                                                    className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-nexus-surface ${
+                                                                        selectedFolderId === folder.id 
+                                                                            ? 'bg-nexus-primary/10 text-nexus-primary' 
+                                                                            : 'text-slate-700 dark:text-nexus-text'
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                                                            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                                                                        </svg>
+                                                                        <span>{folder.name}</span>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {selectedFolder && (
+                                                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-nexus-surface/50 rounded-md text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                        </svg>
+                                                        <span className="text-slate-700 dark:text-nexus-text-secondary">Carpeta seleccionada: {selectedFolder.name}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedFolderId(null)}
+                                                        className="text-slate-500 hover:text-red-500 text-xs"
+                                                    >
+                                                        Quitar
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                     
                                     {!documentToEdit && (
                                         <div className="pt-4 border-t border-slate-200 dark:border-nexus-border">
@@ -475,6 +672,93 @@ const DocumentRegistrationModal: React.FC<{
                                             <div><label className="form-label">Fecha de Recepción</label><input type="date" name="receptionDate" value={formData.receptionDate || ''} onChange={handleChange} className="form-input" /></div>
                                         </div>
                                     </div>
+                                    
+                                    {/* Folder Selector for Saliente */}
+                                    <div className="pt-4 border-t border-slate-200 dark:border-nexus-border">
+                                        <h3 className="text-md font-semibold text-slate-700 dark:text-nexus-text mb-3">Organización</h3>
+                                        <div className="space-y-3">
+                                            <div className="relative">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsFolderSelectorOpenSaliente(!isFolderSelectorOpenSaliente)}
+                                                    className="w-full flex justify-between items-center p-3 bg-white dark:bg-nexus-bg border border-slate-300 dark:border-nexus-border rounded-md text-left hover:bg-slate-50 dark:hover:bg-nexus-surface transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                                                        </svg>
+                                                        <span className={selectedFolder ? "text-slate-800 dark:text-nexus-text" : "text-slate-500 dark:text-nexus-text-secondary"}>
+                                                            {selectedFolder ? selectedFolder.name : "Seleccionar carpeta..."}
+                                                        </span>
+                                                    </div>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                                
+                                                {isFolderSelectorOpenSaliente && (
+                                                    <div className="absolute z-10 mt-1 w-full bg-white dark:bg-nexus-bg border border-slate-300 dark:border-nexus-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                        <div className="py-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setSelectedFolderId(null);
+                                                                    setIsFolderSelectorOpenSaliente(false);
+                                                                }}
+                                                                className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-nexus-text hover:bg-slate-100 dark:hover:bg-nexus-surface"
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                                    </svg>
+                                                                    <span>Sin carpeta</span>
+                                                                </div>
+                                                            </button>
+                                                            {folders.map(folder => (
+                                                                <button
+                                                                    key={folder.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setSelectedFolderId(folder.id);
+                                                                        setIsFolderSelectorOpenSaliente(false);
+                                                                    }}
+                                                                    className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-nexus-surface ${
+                                                                        selectedFolderId === folder.id 
+                                                                            ? 'bg-nexus-primary/10 text-nexus-primary' 
+                                                                            : 'text-slate-700 dark:text-nexus-text'
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                                                                            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                                                                        </svg>
+                                                                        <span>{folder.name}</span>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {selectedFolder && (
+                                                <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-nexus-surface/50 rounded-md text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                        </svg>
+                                                        <span className="text-slate-700 dark:text-nexus-text-secondary">Carpeta seleccionada: {selectedFolder.name}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedFolderId(null)}
+                                                        className="text-slate-500 hover:text-red-500 text-xs"
+                                                    >
+                                                        Quitar
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -496,7 +780,7 @@ const DocumentRegistrationModal: React.FC<{
 
 
 const DocumentManager: React.FC = () => {
-    const { documents, setDocuments, deleteDocument, setTasks, setEvents, taskForDocFlow, setTaskForDocFlow, setViewingDocInfo, setCurrentView, View, addToast, schoolInfo, setNotifications } = useApp();
+    const { documents, setDocuments, deleteDocument, setTasks, setEvents, taskForDocFlow, setTaskForDocFlow, setViewingDocInfo, setCurrentView, View, addToast, schoolInfo, setNotifications, files, setFiles, savePath } = useApp();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDocument, setEditingDocument] = useState<Document | null>(null);
     const [activeTab, setActiveTab] = useState<'Entrante' | 'Saliente'>('Entrante');
@@ -578,7 +862,7 @@ const DocumentManager: React.FC = () => {
         return `${String(hour12).padStart(2, '0')}:${minute} ${period}`;
     };
 
-    const handleSaveDocument = (doc: Document, options: { createTask: boolean; createEvent: boolean; eventTimes?: { startTime: string; endTime: string; } }, taskToComplete?: Task | null) => {
+    const handleSaveDocument = async (doc: Document, options: { createTask: boolean; createEvent: boolean; eventTimes?: { startTime: string; endTime: string; } }, taskToComplete?: Task | null) => {
         let finalDoc = { ...doc };
         const isNewDocument = !documents.some(d => d.id === finalDoc.id);
 
@@ -604,7 +888,33 @@ const DocumentManager: React.FC = () => {
         });
         addToast('Documento guardado con éxito.', 'success');
 
-        // Step 3: Create notification for new incoming documents
+        // Step 3: Save file to selected folder if document has a file and folder
+        if (finalDoc.fileDataUrl && finalDoc.folderId) {
+            try {
+                const selectedFolder = files.find(f => f.id === finalDoc.folderId && f.type === 'folder');
+                if (selectedFolder) {
+                    // Extract file name from document
+                    const fileName = finalDoc.docNumber ? `${finalDoc.docNumber}_${finalDoc.content.substring(0, 30)}.pdf` : `documento_${finalDoc.id}.pdf`;
+                    
+                    // Get the base64 data from the fileDataUrl
+                    const base64Data = finalDoc.fileDataUrl.split(',')[1];
+                    
+                    // Save file to the selected folder
+                    const saveResult = await saveDocumentFileToFolder(selectedFolder, fileName, base64Data, files, savePath);
+                    
+                    if (saveResult) {
+                        addToast(`Archivo guardado en carpeta: ${selectedFolder.name}`, 'success');
+                    } else {
+                        addToast(`Error al guardar archivo en carpeta: ${selectedFolder.name}`, 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Error saving document file to folder:', error);
+                addToast('Error al guardar archivo adjunto', 'error');
+            }
+        }
+
+        // Step 4: Create notification for new incoming documents
         if (isNewDocument && finalDoc.status === DocumentStatus.Entrante) {
             setNotifications(prev => {
                 const newNotification: Notification = {
@@ -620,7 +930,7 @@ const DocumentManager: React.FC = () => {
             });
         }
 
-        // Step 4: Conditionally create a new task (from an incoming doc)
+        // Step 5: Conditionally create a new task (from an incoming doc)
         if (options.createTask) {
             const newTask: Task = {
                 id: `task-from-doc-${doc.id}`,
@@ -635,7 +945,7 @@ const DocumentManager: React.FC = () => {
             addToast('Nueva tarea creada desde el documento.', 'info');
         }
 
-        // Step 5: Conditionally create an event
+        // Step 6: Conditionally create an event
         if (options.createEvent && options.eventTimes) {
             const newEvent: CalendarEvent = {
                 id: `event-from-doc-${doc.id}`,
@@ -652,6 +962,54 @@ const DocumentManager: React.FC = () => {
         }
         
         handleCloseModals();
+    };
+
+    // Helper function to save document file to folder
+    const saveDocumentFileToFolder = async (folder: FileItem, fileName: string, base64Data: string, allFiles: FileItem[], savePath: string): Promise<boolean> => {
+        try {
+            
+            // Construct the folder path
+            let folderPath = savePath;
+            if (folder.parentId) {
+                // Build the full folder path by traversing parent folders
+                let pathParts: string[] = [];
+                let currentId: string | null = folder.parentId;
+                const allFolders = allFiles.filter(f => f.type === 'folder');
+                
+                while (currentId) {
+                    const parentFolder = allFolders.find(f => f.id === currentId);
+                    if (parentFolder) {
+                        pathParts.unshift(parentFolder.name);
+                        currentId = parentFolder.parentId;
+                    } else {
+                        currentId = null;
+                    }
+                }
+                folderPath = `${savePath}/${pathParts.join('/')}/${folder.name}`;
+            } else {
+                folderPath = `${savePath}/${folder.name}`;
+            }
+
+            // Normalize Windows-style path separators
+            let normalizedFolderPath = folderPath;
+            if (/^[A-Za-z]:\\/.test(folderPath) || /^[A-Za-z]:/.test(folderPath)) {
+                normalizedFolderPath = folderPath.replace(/\//g, '\\\\');
+            }
+
+            // Debug logging removed for production
+
+            // Save the file using the appropriate method (Tauri or Web)
+            if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+                const { saveFileToDiskTauri } = await import('../utils/fileUploadTauri');
+                return await saveFileToDiskTauri(normalizedFolderPath, fileName, base64Data);
+            } else {
+                const { saveFileToDiskWeb } = await import('../utils/fileUploadWeb');
+                return await saveFileToDiskWeb(normalizedFolderPath, fileName, base64Data);
+            }
+        } catch (error) {
+            console.error('Error saving document file to folder:', error);
+            return false;
+        }
     };
 
 
@@ -733,6 +1091,7 @@ const DocumentManager: React.FC = () => {
                 taskContext={taskForDocFlow}
                 onSelectSaliente={handleSalienteSelection}
                 openDirectlyTo={openSalienteFormDirectly ? 'Saliente' : null}
+                files={files}
             />
             <RegistryPreviewModal
                 previewType={pdfPreviewType}

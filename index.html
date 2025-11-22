@@ -4,36 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nexus OS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class', // Enable dark mode using a class
-        theme: {
-          extend: {
-            colors: {
-              'nexus-dark': '#0D1117',
-              'nexus-bg': '#161B22',
-              'nexus-surface': '#21262D',
-              'nexus-primary': 'var(--color-accent)',
-              'nexus-secondary': 'var(--color-accent)',
-              'nexus-accent': 'var(--color-accent)',
-              'nexus-text': '#C9D1D9',
-              'nexus-text-secondary': '#8B949E',
-              'nexus-border': '#30363D',
-              'cyan-glow': 'rgba(0, 255, 255, 0.5)',
-            },
-            fontFamily: {
-              'sans': ['Inter', 'sans-serif'],
-              'serif': ['Lora', 'serif'],
-              'mono': ['Roboto Mono', 'monospace'],
-            },
-            boxShadow: {
-              'glow-cyan': '0 0 15px rgba(0, 255, 255, 0.3), 0 0 5px rgba(0, 255, 255, 0.5)',
-            }
-          }
-        }
-      }
-    </script>
+    <link rel="icon" type="image/png" href="./favicon.png" />
     <script>
       // Prevents flash of incorrect theme by applying it before initial render
       if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -60,48 +31,11 @@
         }
       }
     </script>
-    <style>
-      /* Custom Scrollbar Styling */
-      ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f5f9; /* slate-100 */
-        border-radius: 10px;
-      }
-      .dark ::-webkit-scrollbar-track {
-        background: #161B22; /* nexus-bg */
-      }
-      ::-webkit-scrollbar-thumb {
-        background-color: var(--color-accent);
-        border-radius: 10px;
-        border: 2px solid transparent;
-        background-clip: content-box;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background-color: var(--color-accent);
-        filter: brightness(1.2);
-      }
-    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.25.0",
-    "buffer": "https://aistudiocdn.com/buffer@^6.0.3",
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
-    "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
-    "file-saver": "https://aistudiocdn.com/file-saver@^2.0.5"
-  }
-}
-</script>
-  <script type="module" src="/index.tsx"></script>
+    <link rel="stylesheet" href="./src/index.css">
+  <script type="module" src="./index.tsx"></script>
   <body>
     <div id="root"></div>
   </body>
