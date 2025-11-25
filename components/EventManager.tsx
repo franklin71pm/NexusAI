@@ -166,32 +166,6 @@ const ListView: React.FC<{ events: CalendarEvent[]; onEdit: (e: CalendarEvent) =
     );
 };
 
-const DayView: React.FC<{ date: Date; events: CalendarEvent[]; onView: (e: CalendarEvent) => void; }> = ({ date, events, onView }) => {
-    const hours = Array.from({ length: 18 }, (_, i) => i + 6); // 6 AM to 11 PM
-    const dayEvents = events.filter(e => areDatesSameDay(new Date(e.date + 'T00:00:00'), date));
-
-    return (
-        <div className="relative border-t dark:border-nexus-border h-[65vh] overflow-y-auto">
-            {hours.map(hour => (
-                <div key={hour} className="h-12 border-b dark:border-nexus-border flex items-start pl-2">
-                    <span className="text-xs text-slate-400 dark:text-nexus-text-secondary -mt-2 mr-2">{`${hour % 12 === 0 ? 12 : hour % 12}:00 ${hour < 12 || hour === 24 ? 'AM' : 'PM'}`}</span>
-                </div>
-            ))}
-            {dayEvents.map(event => {
-                const top = timeToPercent(event.startTime);
-                const end = timeToPercent(event.endTime);
-                const height = Math.max(end - top, 2); // min height
-                return (
-                    <div key={event.id} onClick={() => onView(event)} className="absolute left-16 right-2 bg-nexus-primary/80 text-white p-2 rounded-lg cursor-pointer overflow-hidden" style={{ top: `calc(${top}% + 1px)`, height: `calc(${height}% - 2px)` }}>
-                        <p className="font-bold text-sm">{event.title}</p>
-                        <p className="text-xs">{event.startTime} - {event.endTime}</p>
-                    </div>
-                );
-            })}
-        </div>
-    );
-}
-
 const WeekView: React.FC<{ date: Date; events: CalendarEvent[]; onView: (e: CalendarEvent) => void; onDayClick: (d: Date) => void; }> = ({ date, events, onView, onDayClick }) => {
     const weekDates = getWeek(date);
     const today = new Date();
@@ -212,7 +186,7 @@ const WeekView: React.FC<{ date: Date; events: CalendarEvent[]; onView: (e: Cale
                              const top = timeToPercent(event.startTime);
                              const end = timeToPercent(event.endTime);
                              const height = Math.max(end - top, 2);
-                             return (<div key={event.id} onClick={(e) => { e.stopPropagation(); onView(event); }} className="absolute left-1 right-1 bg-nexus-primary/80 text-white p-1 rounded cursor-pointer text-xs" style={{ top: `${top}%`, height: `${height}%` }} title={event.title}>{event.title}</div>);
+                             return (<div key={event.id} onClick={(e) => { e.stopPropagation(); onView(event); }} className="absolute left-1 right-1 bg-nexus-primary/80 text-gray-800 dark:text-white p-1 rounded cursor-pointer text-xs" style={{ top: `${top}%`, height: `${height}%` }} title={event.title}>{event.title}</div>);
                         })}
                     </div>
                 ))}
@@ -243,7 +217,7 @@ const MonthView: React.FC<{ date: Date; events: CalendarEvent[]; onDayClick: (d:
                         <div key={day} onClick={() => onDayClick(currentDate)} className="h-28 border-r border-b dark:border-nexus-border p-1 overflow-hidden cursor-pointer hover:bg-slate-50 dark:hover:bg-nexus-surface/30">
                             <span className={`text-sm ${isToday ? 'bg-nexus-primary text-white rounded-full h-6 w-6 flex items-center justify-center' : ''}`}>{day}</span>
                             <div className="text-xs mt-1 space-y-1">
-                                {dayEvents.slice(0, 2).map(event => (<div key={event.id} onClick={(e) => { e.stopPropagation(); onView(event); }} className="bg-nexus-primary/70 text-white p-1 rounded truncate" title={event.title}>{event.title}</div>))}
+                                {dayEvents.slice(0, 2).map(event => (<div key={event.id} onClick={(e) => { e.stopPropagation(); onView(event); }} className="bg-nexus-primary/70 text-gray-800 dark:text-white p-1 rounded truncate" title={event.title}>{event.title}</div>))}
                                 {dayEvents.length > 2 && <div className="text-slate-500">+{dayEvents.length - 2} más</div>}
                             </div>
                         </div>
@@ -257,7 +231,7 @@ const MonthView: React.FC<{ date: Date; events: CalendarEvent[]; onDayClick: (d:
 
 const EventManager: React.FC = () => {
     const { events, setEvents, deleteEvent, addToast, setViewingEvent } = useApp();
-    type CalendarView = 'month' | 'week' | 'day' | 'list';
+    type CalendarView = 'month' | 'week' | 'list';
     
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
@@ -300,7 +274,6 @@ const EventManager: React.FC = () => {
             const newDate = new Date(prev);
             if (view === 'month') newDate.setMonth(prev.getMonth() - 1);
             if (view === 'week') newDate.setDate(prev.getDate() - 7);
-            if (view === 'day') newDate.setDate(prev.getDate() - 1);
             return newDate;
         });
     };
@@ -310,7 +283,6 @@ const EventManager: React.FC = () => {
             const newDate = new Date(prev);
             if (view === 'month') newDate.setMonth(prev.getMonth() + 1);
             if (view === 'week') newDate.setDate(prev.getDate() + 7);
-            if (view === 'day') newDate.setDate(prev.getDate() + 1);
             return newDate;
         });
     };
@@ -319,11 +291,10 @@ const EventManager: React.FC = () => {
 
     const handleDayClick = (date: Date) => {
         setCurrentDate(date);
-        setView('day');
+        setView('list');
     };
     
     const renderTitle = () => {
-        if (view === 'day') return formatDateObj(currentDate);
         if (view === 'week') {
             const week = getWeek(currentDate);
             const start = week[0];
@@ -347,9 +318,9 @@ const EventManager: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="flex items-center p-1 bg-slate-100 dark:bg-nexus-surface rounded-md">
-                            {(['day', 'week', 'month', 'list'] as CalendarView[]).map(v => (
+                            {(['week', 'month', 'list'] as CalendarView[]).map(v => (
                                 <button key={v} onClick={() => setView(v)} className={`px-3 py-1 text-sm font-semibold rounded capitalize ${view === v ? 'bg-white dark:bg-nexus-bg shadow-sm' : 'text-slate-600 dark:text-nexus-text-secondary'}`}>
-                                    {v === 'day' ? 'Día' : v === 'week' ? 'Semana' : v === 'month' ? 'Mes' : 'Lista'}
+                                    {v === 'week' ? 'Semana' : v === 'month' ? 'Mes' : 'Lista'}
                                 </button>
                             ))}
                         </div>
@@ -361,7 +332,6 @@ const EventManager: React.FC = () => {
                 
                 <div>
                     {view === 'list' && <ListView events={events} onEdit={handleOpenEditModal} onView={handleOpenViewModal} onDelete={deleteEvent} />}
-                    {view === 'day' && <DayView date={currentDate} events={events} onView={handleOpenViewModal} />}
                     {view === 'week' && <WeekView date={currentDate} events={events} onView={handleOpenViewModal} onDayClick={handleDayClick} />}
                     {view === 'month' && <MonthView date={currentDate} events={events} onView={handleOpenViewModal} onDayClick={handleDayClick} />}
                 </div>
